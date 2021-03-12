@@ -3,15 +3,15 @@
 
 library progress_bar.test;
 
-import 'package:test/test.dart';
 import 'package:progress_bar/progress_bar.dart';
+import 'package:test/test.dart';
 
-main() {
+void main() {
   group('ProgressBar test - ', () {
     ProgressBar bar;
 
     setUp(() {
-      bar = new ProgressBar(':bar', total: 10);
+      bar = ProgressBar(':bar', total: 10);
     });
 
     test('Intialize Test', () {
@@ -24,5 +24,4 @@ main() {
       expect(bar.incompleteChar, '-');
     });
   });
-
 }
