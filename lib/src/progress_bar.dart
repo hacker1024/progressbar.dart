@@ -1,146 +1,186 @@
-// Copyright (c) 2014, <Jaron Tai>. All rights reserved. Use of this source code
+// Copyright (c) 2021 hacker1024. All rights reserved. Use of this source code
 // is governed by a BSD-style license that can be found in the LICENSE file.
-
-library progress_bar.base;
 
 import 'dart:io';
 import 'dart:math';
 
-/// ProgressBar
+/// A function to format a progress bar string.
+///
+/// [current] is the current progress value.
+/// [total] is the total progress value.
+/// [progress] is the ratio of current : total in the form of a double between 0 and 1.
+/// [elapsed] is the elapsed time.
+typedef ProgressBarFormatter = String Function(
+  int current,
+  int total,
+  double progress,
+  Duration elapsed,
+);
+
 class ProgressBar {
-  String format;
-  int total;
-  int width;
-  bool clear = false;
-  String completeChar;
-  String incompleteChar;
-  int curr = 0;
-  DateTime start;
-  String lastDraw;
-  bool complete = false;
-  Function callback;
+  static const formatterBarToken = ':bar';
 
-  /// Initialize a `ProgressBar` with the given `format` string and the `options` map.
+  /// A function to format the progress bar text.
   ///
-  /// Format tokens:
-  ///
-  ///   - `:bar` the progress bar itself
-  ///   - `:current` current tick number
-  ///   - `:total` total ticks
-  ///   - `:elapsed` time elapsed in seconds
-  ///   - `:percent` completion percentage
-  ///   - `:eta` eta in seconds
-  ///
-  /// Options:
-  ///
-  ///   - `total` total number of ticks to complete
-  ///   - `width` the displayed width of the progress bar defaulting to total
-  ///   - `complete` completion character defaulting to "="
-  ///   - `incomplete` incomplete character defaulting to "-"
-  ///   - `callback` optional function to call when the progress bar completes
-  ///   - `clear` will clear the progress bar upon termination
-  ///
-  ProgressBar(
-    this.format, {
-    this.total = 0,
-    int width,
-    this.clear = false,
-    this.completeChar = '=',
-    this.incompleteChar = '-',
-    this.callback,
-  }) : width = width ?? total;
+  /// See [ProgressBarFormatter] for the available values.
+  /// Additionally, the [formatterBarToken] should be included to be replaced
+  /// with the progress bar indicator.
+  ProgressBarFormatter formatter;
 
-  /// "tick" the progress bar with optional `len` and optional `tokens`.
-  void tick({int len = 1, Map<String, String> tokens}) {
-    if (curr == 0) start = DateTime.now();
+  /// The total value.
+  int _total;
 
-    curr += len;
-    render(tokens);
+  /// The total value.
+  int get total => _total;
 
-    // progress complete
-    if (curr >= total) {
-      complete = true;
-      terminate();
-      if (callback is Function) {
-        Function.apply(callback, [complete]);
-      }
-    }
+  set total(int newTotalTickCount) {
+    assert(newTotalTickCount > 1);
+    _total = newTotalTickCount;
   }
 
-  /// Method to render the progress bar with optional `tokens` to place in the
-  /// progress bar's `format` field.
-  void render(Map<String, String> tokens) {
-    if (!stdout.hasTerminal) return;
+  /// The current value.
+  int get value => _value;
 
-    final ratio = min(max(curr / total, 0.0), 1.0);
+  /// The width of the rendered progress bar.
+  ///
+  /// If this is `null`, the maximum available width is used.
+  ///
+  /// If there's not enough room to use the set width, the maximum available
+  /// width will be used instead.
+  int? width;
 
-    final percent = ratio * 100;
-    final elapsed = DateTime.now().difference(start).inMilliseconds;
-    final eta = (percent == 100) ? 0 : elapsed * (total / curr - 1);
+  /// A backing field for [completeChar].
+  String _completeChar;
 
-    /* populate the bar template with percentages and timestamps */
-    var str = format
-        .replaceAll(':current', curr.toString())
-        .replaceAll(':total', total.toString())
-        .replaceAll(':elapsed',
-            elapsed.isNaN ? '0.0' : (elapsed / 1000).toStringAsFixed(1))
-        .replaceAll(
-            ':eta',
-            (eta.isNaN || !eta.isFinite)
-                ? '0.0'
-                : (eta / 1000).toStringAsFixed(1))
-        .replaceAll(':percent', '${percent.toStringAsFixed(0)}%');
+  /// The character to use for the filled portion of the progress bar.
+  String get completeChar => _completeChar;
 
-    /* compute the available space (non-zero) for the bar */
-    final availableSpace =
-        max(0, stdout.terminalColumns - str.replaceAll(':bar', '').length);
-    final width = min(this.width, availableSpace);
-
-    /* the following assumes the user has one ':bar' token */
-    final completeLength = (width * ratio).round();
-    final complete = List<String>.filled(completeLength, completeChar).join();
-    final incomplete =
-        List<String>.filled(width - completeLength, incompleteChar).join();
-
-    /* fill in the actual progress bar */
-    str = str.replaceAll(':bar', complete + incomplete);
-
-    /* replace the extra tokens */
-    if (tokens != null) {
-      tokens.forEach((key, val) {
-        str = str.replaceAll(':$key', val);
-      });
-    }
-
-    if (lastDraw != str) {
-      stdout.writeCharCode(13); // output carriage return
-      stdout.write(str);
-      lastDraw = str;
-    }
+  set completeChar(String newCompleteChar) {
+    assert(newCompleteChar.length == 1);
+    _completeChar = newCompleteChar;
   }
 
-  /// "update" the progress bar to represent an exact percentage.
-  /// The ratio (between 0 and 1) specified will be multiplied by `total` and
-  /// floored, representing the closest available "tick." For example, if a
-  /// progress bar has a length of 3 and `update(0.5)` is called, the progress
-  /// will be set to 1.
-  ///
-  /// A ratio of 0.5 will attempt to set the progress to halfway.
-  ///
-  void update(num ratio) {
-    final goal = (ratio * total).floor();
-    final delta = goal - curr;
-    tick(len: delta);
+  /// A backing field for [incompleteChar].
+  String _incompleteChar;
+
+  /// The character to use for the empty portion of the progress bar.
+  String get incompleteChar => _incompleteChar;
+
+  set incompleteChar(String newIncompleteChar) {
+    assert(newIncompleteChar.length == 1);
+    _incompleteChar = newIncompleteChar;
   }
 
-  /// Terminates a progress bar.
-  void terminate() {
-    if (clear) {
-      for (int i = 0; i < stdout.terminalColumns; i++) {
-        stdout.writeCharCode(8); // output backspace
-      }
-    } else {
-      stdout.writeln();
+  /// Create a [ProgressBar] instance.
+  ///
+  /// See [ProgressBar.formatter] for formatting documentation.
+  /// Also see [ProgressBar.total], [ProgressBar.width],
+  /// [ProgressBar.completeChar], and [ProgressBar.incompleteChar].
+  ProgressBar({
+    required this.formatter,
+    required int total,
+    this.width,
+    String completeChar = '=',
+    String incompleteChar = '-',
+  })  : assert(total > 1),
+        _total = total,
+        assert(completeChar.length == 1),
+        _completeChar = completeChar,
+        assert(incompleteChar.length == 1),
+        _incompleteChar = incompleteChar;
+
+  /// The current value.
+  var _value = 0;
+
+  /// The time of the first tick.
+  DateTime? _startTime;
+
+  /// The last rendered output.
+  String _lastOutput = '';
+
+  /// Set the tick count.
+  set value(int newTickCount) {
+    // If the new value is the same as the current one, do nothing.
+    if (newTickCount == _value) return;
+
+    // If the old tick count is zero, record the start time.
+    if (_value == 0) _startTime = DateTime.now();
+
+    // Use the new value.
+    _value = newTickCount;
+  }
+
+  /// Render the progress bar.
+  ///
+  /// If [force] is `true`, the progress bar will be redrawn even if the output
+  /// hasn't changed since the last render.
+  void render({bool force = false}) {
+    // Abort if stdout isn't attached to a terminal.
+    assert(stdout.hasTerminal, 'Cannot render - no terminal is available!');
+
+    // Calculate the progress percentage.
+    final progress = min(max(_value / _total, 0.0), 1.0);
+
+    // Calculate the elapsed time.
+    final elapsed = _startTime == null
+        ? Duration.zero
+        : DateTime.now().difference(_startTime!);
+
+    // Format the output.
+    var output = formatter(
+      _value,
+      _total,
+      progress,
+      elapsed,
+    );
+
+    // Compute the available space for the bar.
+    final textLength = output.replaceAll(':bar', '').length;
+    final availableSpace = max(0, stdout.terminalColumns - textLength);
+
+    // Use the set width for the rendered bar width, unless there isn't enough
+    // space.
+    final computedWidth =
+        width == null ? availableSpace : min(width!, availableSpace);
+
+    // If the output string length is equal to the text length, there's no :bar
+    // token.
+    if (output.length != textLength) {
+      // Render the progress bar and add it to the output string.
+      final barProgressLength = (computedWidth * progress).round();
+      final completeBarProgress = _completeChar * barProgressLength;
+      final incompleteBarProgress =
+          _incompleteChar * (computedWidth - barProgressLength);
+      output = output.replaceAll(
+          formatterBarToken, completeBarProgress + incompleteBarProgress);
+    }
+
+    // Output the progress bar.
+    _output(output, force: force);
+  }
+
+  /// Remove a rendered progress bar from the console.
+  void unrender() => _output('', force: true);
+
+  /// Writes the [output] to [stdout] if the output is different to the last
+  /// output (or if [force] is `true`).
+  void _output(String output, {bool force = false}) {
+    // Abort if stdout isn't attached to a terminal.
+    assert(stdout.hasTerminal, 'Cannot render - no terminal is available!');
+
+    if (force || output != _lastOutput) {
+      // Clear the current line.
+      // https://www.lihaoyi.com/post/BuildyourownCommandLinewithANSIescapecodes.html#deletion
+      stdout.write('\u001b[2K');
+
+      // Move the cursor back to the beginning.
+      stdout.writeCharCode(13); // Carriage return
+
+      // Write the output.
+      stdout.write(output);
+
+      // Update _lastOutput.
+      _lastOutput = output;
     }
   }
 }

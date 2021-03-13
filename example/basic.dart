@@ -1,18 +1,22 @@
-// Copyright (c) 2014, <Jaron Tai>. All rights reserved. Use of this source code
+// Copyright (c) 2021 hacker1024. All rights reserved. Use of this source code
 // is governed by a BSD-style license that can be found in the LICENSE file.
 
-library progress_bar.example;
+import 'package:progressbar/progressbar.dart';
 
-import 'dart:async';
+Future<void> main() async {
+  const total = 10;
 
-import 'package:progress_bar/progress_bar.dart';
+  final progressBar = ProgressBar(
+    formatter: (current, total, progress, elapsed) =>
+        '$current/$total (${progress * 100}%) [${ProgressBar.formatterBarToken}] ${elapsed.inSeconds}s',
+    total: total,
+    width: 20,
+  );
 
-void main() {
-  final bar = ProgressBar(' [:bar] :percent :etas ', total: 10);
-  Timer.periodic(const Duration(milliseconds: 500), (Timer timer) {
-    bar.tick();
-    if (bar.complete) {
-      timer.cancel();
-    }
-  });
+  progressBar.render();
+  for (var i = 0; i < total; ++i) {
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    ++progressBar.value;
+    progressBar.render();
+  }
 }
