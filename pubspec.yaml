@@ -1,7 +1,6 @@
 name: progressbar
 description: A progress bar for Dart console apps.
 version: 0.3.0
-author: hacker1024
 homepage: https://github.com/hacker1024/progressbar.dart
 
 environment:
