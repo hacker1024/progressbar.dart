@@ -1,7 +1,7 @@
-name: progressbar
+name: progressbar2
 description: A progress bar for Dart console apps.
 version: 0.3.0
-homepage: https://github.com/hacker1024/progressbar.dart
+homepage: https://github.com/hacker1024/progressbar2.dart
 
 environment:
   sdk: '>=2.12.0 <3.0.0'

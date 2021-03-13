@@ -1,7 +1,7 @@
 // Copyright (c) 2021 hacker1024. All rights reserved. Use of this source code
 // is governed by a BSD-style license that can be found in the LICENSE file.
 
-import 'package:progressbar/progressbar.dart';
+import 'package:progressbar2/progressbar2.dart';
 
 Future<void> main() async {
   const total = 10;

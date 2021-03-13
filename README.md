@@ -1,4 +1,4 @@
-# progressbar
+# progressbar2
 A progress bar for Dart console apps.
 
 ## Usage
