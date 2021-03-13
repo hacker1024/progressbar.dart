@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.1
+* Update homepage
+
 ## 0.3.0
 * Port to Dart 2
 * Redesign API
