@@ -152,7 +152,9 @@ class ProgressBar {
       final incompleteBarProgress =
           _incompleteChar * (computedWidth - barProgressLength);
       output = output.replaceAll(
-          formatterBarToken, completeBarProgress + incompleteBarProgress);
+        formatterBarToken,
+        completeBarProgress + incompleteBarProgress,
+      );
     }
 
     // Output the progress bar.
